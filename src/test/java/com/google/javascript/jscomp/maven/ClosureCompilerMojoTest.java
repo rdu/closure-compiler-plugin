@@ -32,6 +32,23 @@ public class ClosureCompilerMojoTest extends AbstractMojoTestCase
     /**
      * Test of findJavascriptFiles method, of class ClosureCompilerMojo.
      */
+    public final void testFindSortedJavascriptFiles() throws Exception
+    {
+        ClosureCompilerMojo mojo = (ClosureCompilerMojo) lookupMojo("compiler",
+            System.getProperty("basedir") + "/target/test-classes/config/compile-concatenate.xml");
+        Method m = mojo.getClass().getDeclaredMethod("findJavascriptFiles", (Class<?>[])null);
+        m.setAccessible(true);
+        JSSourceFile[] files = (JSSourceFile[]) m.invoke(mojo, (Object[])null);
+        assertNotNull(files);
+        assertTrue(files.length == 2);
+        for (JSSourceFile file : files) {
+            assertTrue(file.getName().endsWith(".js"));
+        }
+    }
+    
+    /*
+     * Test of findJavascriptFiles method, of class ClosureCompilerMojo.
+     */
     public final void testFindJavascriptFiles() throws Exception
     {
         // listSystemProperties();
@@ -41,7 +58,7 @@ public class ClosureCompilerMojoTest extends AbstractMojoTestCase
         m.setAccessible(true);
         JSSourceFile[] files = (JSSourceFile[]) m.invoke(mojo, (Object[])null);
         assertNotNull(files);
-        assertTrue(files.length == 2);
+        assertTrue(files.length == 4);
         for (JSSourceFile file : files) {
             assertTrue(file.getName().endsWith(".js"));
         }
@@ -59,7 +76,7 @@ public class ClosureCompilerMojoTest extends AbstractMojoTestCase
         m.setAccessible(true);
         JSSourceFile[] files = (JSSourceFile[]) m.invoke(mojo, (Object[])null);
         assertNotNull(files);
-        assertTrue(files.length == 2);
+        assertTrue(files.length == 4);
         for (JSSourceFile file : files) {
             assertTrue(file.getName().endsWith(".js"));
         }

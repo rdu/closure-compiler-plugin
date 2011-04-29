@@ -35,6 +35,13 @@ import com.google.javascript.jscomp.JSSourceFile;
 import com.google.javascript.jscomp.Result;
 import com.google.javascript.jscomp.SourceFile;
 import com.google.javascript.jscomp.WarningLevel;
+import edu.emory.mathcs.backport.java.util.Arrays;
+import java.io.InputStream;
+import java.io.StringReader;
+import java.io.StringWriter;
+import java.util.Collections;
+import java.util.Comparator;
+import org.apache.tools.ant.util.ReaderInputStream;
 
 /**
  * Compile and validate javascript files with Google closure compiler tool.
@@ -134,6 +141,20 @@ public class ClosureCompilerMojo extends AbstractMojo
      */
     private boolean force;
 
+    /**
+     * concatenate files to one big file
+     *
+     * @parameter default-value="false"
+     */
+    private boolean concatenate;
+   
+    /**
+     * pattern order to concatenate file
+     * 
+     * @parameter
+     */
+    private String[] concatOrders = new String[]{"**/*.js"};;
+    
 
     private File m_outputFile;
     private JSSourceFile[] m_jsFiles;
@@ -182,6 +203,14 @@ public class ClosureCompilerMojo extends AbstractMojo
         //  find js files
         getLog().debug("find js files");
         m_jsFiles = findJavascriptFiles();
+        if (concatenate) {
+            try {
+                m_jsFiles = new JSSourceFile[] { JSSourceFile.fromInputStream(jsFileName, getConcatInputStream(m_jsFiles)) };
+            }
+            catch (IOException ex) {
+                throw new MojoExecutionException("can't concatenate files, not readable");
+            }
+        }
         if (0 != m_jsFiles.length && isStale()) {
             MojoReporter reporter = null;
             File loggerFile = (loggerFileName == null || loggerFileName.trim().length() == 0) ? null :
@@ -220,7 +249,7 @@ public class ClosureCompilerMojo extends AbstractMojo
         level.setOptionsForCompilationLevel(options);
         WarningLevel wLevel = convertStringToEnumValue(WarningLevel.class, warningLevel);
         wLevel.setOptionsForWarningLevel(options);
-
+                
         Result result = compiler.compile(new JSSourceFile[]{}, m_jsFiles, options);
         if (!result.success) {
             throw new MojoExecutionException("Javascript compilation failed.");
@@ -279,6 +308,7 @@ public class ClosureCompilerMojo extends AbstractMojo
                 v.add(JSSourceFile.fromFile(resourceDirectory + File.separator + jsFile));
             }
         }
+        if (concatenate) Collections.sort(v, new JavascriptComparator());
         return (v.toArray(new JSSourceFile[v.size()]));
     }
 
@@ -332,5 +362,51 @@ public class ClosureCompilerMojo extends AbstractMojo
             lastModified = Math.max(fileLastModified, lastModified);
         }
         return lastModified;
+    }
+    
+    private static InputStream getConcatInputStream(JSSourceFile[] files) throws IOException
+    {
+        StringWriter sw = new StringWriter();
+        for (JSSourceFile file : files) {
+            sw.append(file.getCode());
+            sw.append("\n");
+        }
+        InputStream is = new ReaderInputStream(new StringReader(sw.toString()));
+        return is;
+    }
+    
+    private class JavascriptComparator implements Comparator<SourceFile> {
+        
+        private List<List<String>>includes = new ArrayList();
+        
+        public JavascriptComparator() {
+            List<String> orders = new ArrayList<String>(Arrays.asList(concatOrders));
+            orders.add("**/*.js");
+            for (String pattern : orders) {
+                DirectoryScanner ds = new DirectoryScanner();                
+                ds.setBasedir(resourceDirectory);
+                ds.setIncludes(new String[] { pattern });
+                ds.scan();
+                includes.add(Arrays.asList(ds.getIncludedFiles()));
+            }
+        }
+        
+        @Override
+        public int compare(SourceFile o1, SourceFile o2) {
+            int p1 = getPriority(o1);
+            int p2 = getPriority(o2);
+            return p1 > p2 ? 1 : p1 == p2 ? 0 : -1;
+        }
+        
+        private int getPriority(SourceFile sf) {
+            int p = 0;
+            for (List<String> sl : includes) {
+                for (String cs : sl) {
+                    if (sf.getName().endsWith(cs)) return p;
+                    p++;
+                }
+            }
+            return -1;
+        }
     }
 }
