@@ -22,7 +22,7 @@
   <groupId>com.google.javascript</groupId>
   <artifactId>closure-compiler-plugin</artifactId>
   <packaging>maven-plugin</packaging>
-  <version>1.0.2</version>
+  <version>1.1</version>
   <name>Google closure compiler Plugin</name>
   <description>A plugin to provide maven project access to the Google closure compiler for JavaScript validation and compilation.</description>
   <url>https://github.com/hoshposh/closure-compiler-plugin/</url>
